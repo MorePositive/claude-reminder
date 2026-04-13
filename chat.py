@@ -1,4 +1,5 @@
-from anthropic import Anthropic
+import time
+from anthropic import Anthropic, APIStatusError
 from anthropic.types import Message
 from dotenv import load_dotenv
 import json
@@ -50,8 +51,14 @@ def chat(
     if tools:
         params["tools"] = tools
     
-    message = client.messages.create(**params)
-    return message
+    for attempt in range(3):
+        try:
+            return client.messages.create(**params)
+        except APIStatusError as e:
+            if e.status_code == 529 and attempt < 2:
+                time.sleep(2 ** attempt)
+            else:
+                raise
 
 def text_from_message(message):
     return "\n".join(
